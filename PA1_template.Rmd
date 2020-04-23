@@ -1,25 +1,107 @@
 ---
-title: "Reproducible Research: Peer Assessment 1"
-output: 
+title: 'Reproducible Research: Peer Assessment 1'
+output:
   html_document:
-    keep_md: true
+    keep_md: yes
+  pdf_document: default
 ---
-
+```{r, echo = TRUE}
+library(lubridate)
+library(dplyr)
+library(knitr)
+library(ggplot2)
+```
 
 ## Loading and preprocessing the data
 
+#### 1. Load the data 
+```{r, echo = TRUE}
+activity <- read.csv("activity.csv")
+```
 
+#### 2. Process the data into a format suitable for your analysis
+```{r, echo = TRUE}
+activity$date <- as.Date(activity$date)
+```
 
 ## What is mean total number of steps taken per day?
 
+#### 1. Calculate the total number of steps taken per day
+```{r, echo = TRUE}
+daysteps <- tapply(activity$steps, activity$date, sum, na.rm = TRUE)
+```
 
+#### 2. Make a histogram of the total number of steps taken each day
+```{r, echo = TRUE}
+hist(daysteps, 50, xlab = 'Steps per Day', ylab = 'Frequency', main = "Total number of steps taken each day")
+```
+
+#### 3. Calculate and report the mean and median of the total number of steps taken per day
+```{r, echo = TRUE}
+mean(daysteps)
+median(daysteps)
+```
 
 ## What is the average daily activity pattern?
 
+#### 1. Make a time series plot of the 5-minute interval (x) and the average number of steps taken, averaged across all days (y)
+```{r, echo = TRUE}
+avgsteps <- tapply(activity$steps, activity$interval, mean, na.rm = TRUE)
+plot(names(avgsteps), avgsteps, xlab = "5-Minute Interval", ylab = "Average Number of Steps Taken", type = "l")
+```
 
+#### 2. Which 5-minute interval, on average across all the days in the dataset, contains the maximum number of steps?
+```{r, echo = TRUE}
+max_intavg <- avgsteps[avgsteps == max(avgsteps)]
+max_intavg
+```
 
 ## Imputing missing values
 
+#### 1. Calculate and report the total number of missing values in the dataset
+```{r, echo = TRUE}
+sum(is.na(activity))
+```
 
+#### 2. Devise a strategy for filling in all of the missing values in the dataset
+```{r, echo = TRUE}
+activity2 <- activity
+activity2[which(is.na(activity2$steps)), 1] <- avgsteps[as.character(activity2[which(is.na(activity2$steps)), 3])]
+sum(is.na(activity2))
+```
+
+#### 3. Create a new dataset that is equal to the original dataset but with the missing data filled in
+```{r, echo = TRUE}
+daysteps2 <- tapply(activity2$steps, activity2$date, sum)
+```
+
+#### 4. Make a histogram of the total number of steps taken each day and calculate and report the mean and median total number of steps taken per day
+```{r, echo = TRUE}
+par(mfrow = c(2, 1))
+hist(daysteps, 50, xlab = 'Steps per Day', ylab = 'Frequency', main = "Total number of steps taken each day", sub = "(with missing values)", ylim = c(0, 20))
+  abline(v = mean(daysteps), col = 1, lwd = 2)
+hist(daysteps2, 50, xlab = 'Steps per Day', ylab = 'Frequency', main = "Total number of steps taken each day", sub = "(without missing values = replaced with interval mean)", ylim = c(0, 20))
+  abline(v = mean(daysteps2), col = 1, lwd = 2)
+mean(daysteps2)
+mean(daysteps)
+mean(daysteps2) - mean(daysteps)
+median(daysteps2)
+median(daysteps)
+median(daysteps2) - median(daysteps)
+```
 
 ## Are there differences in activity patterns between weekdays and weekends?
+
+#### 1. Creating a new factor variable in the dataset with two levels indicating whether a given date is a weekday day or weekend day
+```{r, echo = TRUE}
+activity2 <- mutate(activity2, week_ = ifelse(weekdays(activity2$date) == "Saturday" | weekdays(activity2$date) == "Sunday", "weekend", "weekday"))
+activity2$week_ <- as.factor(activity2$week_)
+head(activity2)
+```
+
+#### 2. Make a panel plot containing a time series plot of the 5-minute interval (x) and the average number of steps taken, averaged across all weekday days or weekend days (y)
+```{r, echo = TRUE}
+meanweek_ <- aggregate(steps ~ interval + week_, data = activity2, FUN = mean)
+head(meanweek_)
+ggplot(meanweek_, aes(interval, steps)) + geom_line() + facet_grid(week_ ~ .) + labs(x = "5-minute Interval", y = "Average Number of Steps Taken", title = "Activity")
+```
